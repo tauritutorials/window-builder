@@ -1,17 +1,39 @@
-use tauri::{AppHandle, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 #[tauri::command]
-fn new_window(app: AppHandle) {
-    WebviewWindowBuilder::new(&app, "window-1", WebviewUrl::App("index.html".into()))
-        .build()
-        .unwrap();
+fn new_window_or_focus(app: AppHandle) -> tauri::Result<()> {
+    match app.webview_windows().get("new-window") {
+        None => {
+            WebviewWindowBuilder::new(&app, "new-window", WebviewUrl::App("index.html".into()))
+                .build()?;
+        }
+        Some(window) => {
+            window.set_focus()?;
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn new_window(app: AppHandle) -> tauri::Result<()> {
+    let len = app.webview_windows().len();
+
+    WebviewWindowBuilder::new(
+        &app,
+        format!("window-{}", len),
+        WebviewUrl::App("index.html".into()),
+    )
+    .build()?;
+
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![new_window])
+        .invoke_handler(tauri::generate_handler![new_window, new_window_or_focus])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
