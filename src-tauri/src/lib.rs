@@ -1,8 +1,7 @@
 use std::time::Duration;
 
 use tauri::{
-    utils::config::WindowEffectsConfig, utils::WindowEffect, window::Effect, AppHandle, Manager,
-    WebviewUrl, WebviewWindowBuilder,
+    tray::TrayIconEvent, utils::{config::WindowEffectsConfig, WindowEffect}, window::Effect, AppHandle, Manager, WebviewUrl, WebviewWindowBuilder
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 
@@ -71,8 +70,6 @@ fn floating(app: AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-
-
 // current bug with positioner permissions
 // https://github.com/tauri-apps/plugins-workspace/issues/1891
 // add this to capabilities
@@ -81,24 +78,25 @@ fn floating(app: AppHandle) -> tauri::Result<()> {
 //       "positioner:allow-set-tray-icon-state"
 //   ]
 
-#[tauri::command]
-fn position(app: AppHandle) -> tauri::Result<()> {
-    let window = WebviewWindowBuilder::new(&app, "position", WebviewUrl::App("position.html".into()))
-        .build()?;
+fn position(app: &AppHandle) -> tauri::Result<()> {
+    let window =
+        WebviewWindowBuilder::new(app, "position", WebviewUrl::App("position.html".into()))
+            .build()?;
 
-    window.move_window(Position::TopLeft)?;
-    window.move_window(Position::TopCenter)?;
-    window.move_window(Position::TopRight)?;
-
-    window.move_window(Position::BottomLeft)?;
-    window.move_window(Position::BottomCenter)?;
-    window.move_window(Position::BottomRight)?;
-
-    window.move_window(Position::LeftCenter)?;
-    window.move_window(Position::Center)?;
-    window.move_window(Position::RightCenter)?;
-
-
+    // all the good positions
+    // ---------------------------------------------
+    // window.move_window(Position::TopLeft)?;
+    // window.move_window(Position::TopCenter)?;
+    // window.move_window(Position::TopRight)?;
+    //
+    // window.move_window(Position::BottomLeft)?;
+    // window.move_window(Position::BottomCenter)?;
+    // window.move_window(Position::BottomRight)?;
+    //
+    // window.move_window(Position::LeftCenter)?;
+    // window.move_window(Position::Center)?;
+    // window.move_window(Position::RightCenter)?;
+    //
     // requires tray position to be set
     // window.move_window(Position::TrayBottomCenter)?;
     // window.move_window(Position::TrayBottomLeft)?;
@@ -106,7 +104,7 @@ fn position(app: AppHandle) -> tauri::Result<()> {
     //
     // window.move_window(Position::TrayLeft)?;
     // window.move_window(Position::TrayCenter)?;
-    // window.move_window(Position::TrayRight)?;
+    window.move_window(Position::TrayRight)?;
 
     Ok(())
 }
@@ -114,26 +112,30 @@ fn position(app: AppHandle) -> tauri::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             new_window,
             new_window_or_focus,
             effects,
             floating,
-            position,
         ])
         .setup(|app| {
-            #[cfg(desktop)]
-            {
-                app.handle().plugin(tauri_plugin_positioner::init());
-                tauri::tray::TrayIconBuilder::new()
-                    .on_tray_icon_event(|tray_handle, event| {
-                        tauri_plugin_positioner::on_tray_event(tray_handle.app_handle(), &event);
-                    })
-                    .build(app)?;
+            tauri::tray::TrayIconBuilder::with_id("main")
+                .menu_on_left_click(false)
+                .on_tray_icon_event(|tray_handle, event| {
+                    tauri_plugin_positioner::on_tray_event(tray_handle.app_handle(), &event);
 
-                Ok(())
-            }
+                    match event {
+                        TrayIconEvent::Click { .. } => {
+                            position(tray_handle.app_handle()).ok();
+                        }
+                        _ => {}
+                    }
+                })
+                .build(app)?;
+
+            Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
