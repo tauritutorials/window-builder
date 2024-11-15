@@ -1,0 +1,13 @@
+{
+  "identifier": "desktop-capability",
+  "platforms": [
+    "macOS",
+    "windows",
+    "linux"
+  ],
+  "windows": ["position"],
+  "permissions": [
+    "positioner:allow-move-window",
+    "positioner:allow-set-tray-icon-state"
+  ]
+}

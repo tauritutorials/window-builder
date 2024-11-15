@@ -13,8 +13,22 @@ window.addEventListener("DOMContentLoaded", async () => {
 
 
     document
-        .querySelector("#options")
+        .querySelector("#effects")
         .addEventListener("click", () => {
-            invoke("options");
+            invoke("effects");
+        });
+
+
+    document
+        .querySelector("#floating")
+        .addEventListener("click", () => {
+            invoke("floating");
+        });
+
+
+    document
+        .querySelector("#position")
+        .addEventListener("click", () => {
+            invoke("position");
         });
 });
