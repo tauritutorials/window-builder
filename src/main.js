@@ -25,10 +25,4 @@ window.addEventListener("DOMContentLoaded", async () => {
             invoke("floating");
         });
 
-
-    document
-        .querySelector("#position")
-        .addEventListener("click", () => {
-            invoke("position");
-        });
 });

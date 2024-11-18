@@ -1,7 +1,10 @@
 use std::time::Duration;
 
 use tauri::{
-    tray::TrayIconEvent, utils::{config::WindowEffectsConfig, WindowEffect}, window::Effect, AppHandle, Manager, WebviewUrl, WebviewWindowBuilder
+    tray::TrayIconEvent,
+    utils::{config::WindowEffectsConfig, WindowEffect},
+    window::Effect,
+    AppHandle, Manager, WebviewUrl, WebviewWindowBuilder,
 };
 use tauri_plugin_positioner::{Position, WindowExt};
 
@@ -38,6 +41,7 @@ fn new_window_or_focus(app: AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// creates a window with a transparent effect, effects.html has a transparent <body>
 #[tauri::command]
 fn effects(app: AppHandle) -> tauri::Result<()> {
     WebviewWindowBuilder::new(&app, "effects", WebviewUrl::App("effects.html".into()))
@@ -48,7 +52,12 @@ fn effects(app: AppHandle) -> tauri::Result<()> {
         .transparent(true)
         .inner_size(400.0, 800.0)
         .effects(WindowEffectsConfig {
-            effects: vec![WindowEffect::HudWindow],
+            effects: vec![
+                // for macos
+                WindowEffect::HudWindow,
+                // for windows
+                WindowEffect::Acrylic,
+            ],
             state: None,
             radius: Some(24.0),
             color: None,
@@ -58,15 +67,23 @@ fn effects(app: AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// this will create a persistant floating window at the top left corner of the screen. there won't
+/// be any way to close it because decorations() is set to false.
 #[tauri::command]
 fn floating(app: AppHandle) -> tauri::Result<()> {
-    WebviewWindowBuilder::new(&app, "floating", WebviewUrl::App("index.html".into()))
-        .always_on_top(true)
-        .decorations(false)
-        .inner_size(400.0, 400.0)
-        .position(0.0, 0.0)
-        .build()?;
-
+    match app.webview_windows().get("floating") {
+        None => {
+            WebviewWindowBuilder::new(&app, "floating", WebviewUrl::App("index.html".into()))
+                .always_on_top(true)
+                .decorations(false)
+                .inner_size(400.0, 400.0)
+                .position(0.0, 0.0)
+                .build()?;
+        }
+        Some(window) => {
+            window.close()?;
+        }
+    }
     Ok(())
 }
 
@@ -78,34 +95,26 @@ fn floating(app: AppHandle) -> tauri::Result<()> {
 //       "positioner:allow-set-tray-icon-state"
 //   ]
 
+/// This will build a window with position.html and below are examples of everywhere you can move
+/// the window to with the positioner plugin. at the bottom we position the window to the right of
+/// the tray icon.
 fn position(app: &AppHandle) -> tauri::Result<()> {
     let window =
         WebviewWindowBuilder::new(app, "position", WebviewUrl::App("position.html".into()))
+            .decorations(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .focused(true)
             .build()?;
 
-    // all the good positions
-    // ---------------------------------------------
-    // window.move_window(Position::TopLeft)?;
-    // window.move_window(Position::TopCenter)?;
-    // window.move_window(Position::TopRight)?;
-    //
-    // window.move_window(Position::BottomLeft)?;
-    // window.move_window(Position::BottomCenter)?;
-    // window.move_window(Position::BottomRight)?;
-    //
-    // window.move_window(Position::LeftCenter)?;
-    // window.move_window(Position::Center)?;
-    // window.move_window(Position::RightCenter)?;
-    //
-    // requires tray position to be set
-    // window.move_window(Position::TrayBottomCenter)?;
-    // window.move_window(Position::TrayBottomLeft)?;
-    // window.move_window(Position::TrayBottomRight)?;
-    //
-    // window.move_window(Position::TrayLeft)?;
-    // window.move_window(Position::TrayCenter)?;
-    window.move_window(Position::TrayRight)?;
+    window.move_window(Position::TrayCenter)?;
 
+    window.clone().on_window_event(move |evt| match evt {
+        tauri::WindowEvent::Focused(is_focused) if !is_focused => {
+            window.close().ok();
+        }
+        _ => {}
+    });
     Ok(())
 }
 
@@ -121,13 +130,17 @@ pub fn run() {
             floating,
         ])
         .setup(|app| {
+            // here we build the trau icon and give it an id.
             tauri::tray::TrayIconBuilder::with_id("main")
                 .menu_on_left_click(false)
                 .on_tray_icon_event(|tray_handle, event| {
+                    // we pass the tray event to the positioner plugin so it can register the
+                    // location of the tray icon.
                     tauri_plugin_positioner::on_tray_event(tray_handle.app_handle(), &event);
 
                     match event {
                         TrayIconEvent::Click { .. } => {
+                            // then we call position() to build the window.
                             position(tray_handle.app_handle()).ok();
                         }
                         _ => {}
