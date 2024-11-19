@@ -104,7 +104,6 @@ fn position(app: &AppHandle) -> tauri::Result<()> {
             .decorations(false)
             .always_on_top(true)
             .skip_taskbar(true)
-            .focused(true)
             .build()?;
 
     window.move_window(Position::TrayCenter)?;
