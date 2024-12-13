@@ -131,6 +131,7 @@ pub fn run() {
         .setup(|app| {
             // here we build the trau icon and give it an id.
             tauri::tray::TrayIconBuilder::with_id("main")
+                .icon(app.default_window_icon().unwrap().clone())
                 .menu_on_left_click(false)
                 .on_tray_icon_event(|tray_handle, event| {
                     // we pass the tray event to the positioner plugin so it can register the

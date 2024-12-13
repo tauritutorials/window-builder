@@ -7,10 +7,6 @@
     "frontendDist": "../src"
   },
   "app": {
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true
-    },
     "withGlobalTauri": true,
     "windows": [
       {
